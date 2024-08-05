@@ -208,11 +208,13 @@ int main() {
 class Yolov8::Impl
 {
 public:
-  Impl(std::string const& torchScriptModel)
+  Impl(std::string const& torchScriptModel, float conf_thres, float iou_thres, int max_det)
   : _module{torch::jit::load(torchScriptModel)}
   , _device{/*torch::cuda::is_available() ? torch::kCUDA :*/torch::kCPU} // TODO: temporary supported only CPU
   , _classes{"person", "face"}
-
+  , _conf_thres{conf_thres}
+  , _iou_thres{iou_thres}
+  , _max_det{max_det}
   {
     _module.eval();
     _module.to(_device, torch::kFloat32);
@@ -233,7 +235,7 @@ public:
 
     torch::Tensor output = _module.forward(inputs).toTensor().cpu();
 
-    auto keep = non_max_supperession(output)[0];
+    auto keep = non_max_supperession(output, _conf_thres, _iou_thres, _max_det)[0];
     auto boxes = keep.index({Slice(), Slice(None, 4)});
     keep.index_put_({Slice(), Slice(None, 4)},
                     scale_boxes({input_image.rows, input_image.cols}, boxes, {input.rows, input.cols}));
@@ -281,10 +283,13 @@ private:
   mutable torch::jit::script::Module _module;
   torch::Device _device{torch::kCPU};
   std::vector<std::string> _classes;
+  float _conf_thres{0.4};
+  float _iou_thres{0.7};
+  int _max_det{600};
 };
 
-Yolov8::Yolov8(std::string const& torchScriptModel)
-: _impl{std::make_unique<Impl>(torchScriptModel)}
+Yolov8::Yolov8(std::string const& torchScriptModel, float conf_thres, float iou_thres, int max_det)
+: _impl{std::make_unique<Impl>(torchScriptModel, conf_thres, iou_thres, max_det)}
 {
 }
 

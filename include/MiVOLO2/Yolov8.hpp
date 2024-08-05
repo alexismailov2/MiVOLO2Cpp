@@ -15,7 +15,7 @@ struct Yolov8Result
 class Yolov8
 {
 public:
-  Yolov8(std::string const& torchScriptModel);
+  Yolov8(std::string const& torchScriptModel, float conf_thres = 0.4, float iou_thres = 0.7, int max_det = 600);
   ~Yolov8();
   auto predict(cv::Mat const& input) const -> std::vector<Yolov8Result>;
 
